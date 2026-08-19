@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#2fb6f5">
 <title>画师库</title>
 <style>
   :root {
@@ -43,8 +44,10 @@
   /* 顶部栏 */
   .topbar {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 12px 16px;
-    background: var(--topbar);
+    padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+    background: color-mix(in srgb, var(--topbar) 80%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    backdrop-filter: blur(14px) saturate(160%);
     border-bottom: 1px solid var(--line);
     position: sticky; top:0; z-index:50;
   }
@@ -88,6 +91,8 @@
 
   /* 主内容区 */
   .content { flex:1; padding: 16px; overflow-y:auto; }
+  .content > div { animation: contentIn .28s ease; }
+  @keyframes contentIn { from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none} }
 
   /* 更新横幅 */
   .banner {
@@ -100,34 +105,49 @@
   @keyframes fadeIn { from{opacity:0; transform:translateY(-8px)} to{opacity:1; transform:none} }
 
   /* 检索 */
-  .search-row { display:flex; gap:8px; margin-bottom:12px; }
+  .search-row {
+    display:flex; gap:8px; margin-bottom:12px;
+    background: var(--card); border:1px solid var(--line); border-radius:14px;
+    padding:4px 4px 4px 14px; align-items:center;
+    box-shadow: var(--shadow);
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .search-row:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(47,182,245,.15); }
+  .search-row .s-ico { font-size:16px; color:var(--sub); }
   .search-row input {
-    flex:1; padding: 12px 14px; border-radius: 12px;
-    border:1px solid var(--line); background: var(--card); color: var(--text);
-    font-size:15px; outline:none;
+    flex:1; padding:10px 8px; border:none; background:transparent; color:var(--text);
+    font-size:15px; outline:none; min-width:0;
   }
-  .search-row input:focus { border-color: var(--primary); }
   .search-row button {
-    padding: 0 20px; border:none; border-radius: 12px;
-    background: var(--primary); color:#fff; font-size:15px; cursor:pointer;
+    padding:10px 20px; border:none; border-radius:10px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+    color:#fff; font-size:15px; font-weight:600; cursor:pointer;
+    transition: transform .12s, filter .2s;
   }
+  .search-row button:active { transform: scale(.94); filter: brightness(.9); }
   .suggest {
     display:none; background: var(--card); border:1px solid var(--line);
-    border-radius: 12px; overflow:hidden; margin-bottom:12px; box-shadow: var(--shadow);
+    border-radius: 14px; overflow:hidden; margin-bottom:12px; box-shadow: var(--shadow);
   }
   .suggest-item {
-    padding: 12px 14px; cursor:pointer; font-size:15px; border-bottom:1px solid var(--line);
+    padding: 13px 16px; cursor:pointer; font-size:15px; border-bottom:1px solid var(--line);
   }
   .suggest-item:last-child { border-bottom:none; }
   .suggest-item:active { background: var(--line); }
 
-  .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap:12px; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap:14px; }
   .card {
-    background: var(--card); border-radius: 12px; overflow:hidden;
+    background: var(--card); border-radius: 16px; overflow:hidden;
     box-shadow: var(--shadow); border:1px solid var(--line);
+    transition: transform .15s ease, box-shadow .2s ease;
   }
-  .card img { width:100%; aspect-ratio:1/1; object-fit:cover; display:block; cursor:pointer; }
-  .card .name { padding:8px 10px; font-size:14px; text-align:center; color:var(--text); cursor:pointer; }
+  .card:active { transform: scale(.96); box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+  .card img {
+    width:100%; aspect-ratio:1/1; object-fit:cover; display:block; cursor:pointer;
+    animation: imgIn .3s ease; background: var(--line);
+  }
+  @keyframes imgIn { from{opacity:0} to{opacity:1} }
+  .card .name { padding:9px 10px; font-size:14px; text-align:center; color:var(--text); cursor:pointer; }
   /* 管理员卡片操作按钮 */
   .card-actions { display:flex; border-top:1px solid var(--line); }
   .card-actions button {
@@ -175,12 +195,15 @@
   .admin-overlay {
     display:none; position:fixed; inset:0; background:rgba(0,0,0,.55);
     z-index:100; align-items:center; justify-content:center; padding:20px;
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
   }
   .admin-overlay.show { display:flex; }
   .admin-panel {
     background: var(--card); border-radius:16px; padding:24px; width:100%; max-width:360px;
     box-shadow: 0 8px 30px rgba(0,0,0,.3);
+    animation: popIn .25s ease;
   }
+  @keyframes popIn { from{opacity:0; transform:scale(.92) translateY(8px)} to{opacity:1; transform:none} }
   .admin-panel h3 { margin-bottom:16px; font-size:17px; text-align:center; }
   .admin-panel input {
     width:100%; padding:11px 12px; margin-bottom:12px;
@@ -268,11 +291,13 @@
   .edit-overlay {
     display:none; position:fixed; inset:0; background:rgba(0,0,0,.55);
     z-index:110; align-items:center; justify-content:center; padding:20px;
+    -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
   }
   .edit-overlay.show { display:flex; }
   .edit-panel {
     background: var(--card); border-radius:16px; padding:24px; width:100%; max-width:360px;
     box-shadow: 0 8px 30px rgba(0,0,0,.3);
+    animation: popIn .25s ease;
   }
   .edit-panel h3 { margin-bottom:6px; font-size:17px; text-align:center; }
   .edit-panel .edit-old { text-align:center; color:var(--sub); font-size:13px; margin-bottom:14px; word-break:break-all; }
@@ -382,18 +407,38 @@
 
   /* 底部导航 */
   .bottom-nav {
-    display:flex; background: var(--nav-bg);
-    border-top:1px solid var(--line); padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+    display:flex; background: color-mix(in srgb, var(--nav-bg) 82%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    backdrop-filter: blur(14px) saturate(160%);
+    border-top:1px solid var(--line);
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
     position: sticky; bottom:0; z-index:50;
   }
   .nav-item {
-    flex:1; display:flex; flex-direction:column; align-items:center;
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
     padding:6px 0; cursor:pointer; color:var(--sub); font-size:12px;
-    transition:color .2s; user-select:none;
+    transition:color .2s, transform .15s; user-select:none; position:relative;
+    border-radius:14px; margin:0 4px;
   }
-  .nav-item .ico { font-size:22px; margin-bottom:2px; }
-  .nav-item.active { color: var(--primary); }
-  .nav-sign { text-align:center; color: var(--sub); font-size:12px; padding:4px 0 8px; background: var(--nav-bg); border-top:1px solid var(--line); }
+  .nav-item .ico { font-size:22px; margin-bottom:2px; transition: transform .15s; }
+  .nav-item.active {
+    color: var(--primary);
+  }
+  .nav-item.active .ico { transform: translateY(-1px) scale(1.1); }
+  /* 激活胶囊指示 */
+  .nav-item.active::before {
+    content:''; position:absolute; top:-6px; width:22px; height:3px;
+    background: var(--primary); border-radius:3px;
+  }
+  .nav-item:active { transform: scale(.94); }
+  .nav-sign {
+    text-align:center; color: var(--sub); font-size:12px;
+    padding:4px 0 calc(8px + env(safe-area-inset-bottom));
+    background: color-mix(in srgb, var(--nav-bg) 82%, transparent);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    backdrop-filter: blur(14px) saturate(160%);
+    border-top:1px solid var(--line);
+  }
 </style>
 </head>
 <body>
@@ -641,6 +686,7 @@ function historyHTML() {
 function searchHTML() {
   return `
     <div class="search-row">
+      <span class="s-ico">🔍</span>
       <input id="searchInput" placeholder="输入画师名检索..." autocomplete="off">
       <button id="searchBtn">搜索</button>
     </div>
