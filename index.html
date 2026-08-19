@@ -6,26 +6,28 @@
 <title>画师库</title>
 <style>
   :root {
-    --bg: #f5f7ff;
+    --bg: #f0f8ff;
     --card: #ffffff;
-    --primary: #3b82f6;
+    --primary: #2fb6f5;
+    --primary-deep: #0ea5e9;
     --text: #1f2937;
     --sub: #6b7280;
-    --line: #e5e7eb;
-    --shadow: 0 2px 12px rgba(59,130,246,.08);
+    --line: #dceef8;
+    --shadow: 0 2px 12px rgba(47,182,245,.12);
     --topbar: #ffffff;
     --nav-bg: #ffffff;
   }
   body.dark {
-    --bg: #0f1420;
-    --card: #1a2233;
-    --primary: #60a5fa;
+    --bg: #0e1626;
+    --card: #16233a;
+    --primary: #4fc3f7;
+    --primary-deep: #29b6f6;
     --text: #e2e8f0;
     --sub: #7c8ba1;
-    --line: #263248;
+    --line: #1e3350;
     --shadow: 0 2px 12px rgba(0,0,0,.4);
-    --topbar: #141b2b;
-    --nav-bg: #141b2b;
+    --topbar: #121c30;
+    --nav-bg: #121c30;
   }
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body { height:100%; }
@@ -201,30 +203,65 @@
   .admin-panel .msg.ok { color:#22c55e; }
   .admin-panel .author-note { text-align:center; color: var(--sub); font-size:13px; margin-bottom:10px; }
 
-  /* 画师详情页 */
+  /* 画师详情页 —— 沉浸式毛玻璃 */
   .detail-overlay {
-    display:none; position:fixed; inset:0; background:rgba(0,0,0,.92);
-    z-index:90; align-items:center; justify-content:center; padding:16px;
+    display:none; position:fixed; inset:0; z-index:90;
+    align-items:center; justify-content:center; padding:20px;
     flex-direction:column;
+    background: rgba(10,16,26,.86);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    opacity:0; transition: opacity .25s ease;
   }
-  .detail-overlay.show { display:flex; }
+  .detail-overlay.show { display:flex; opacity:1; }
+  /* 模糊背景层：用画师自己的图铺满 + 放大模糊 */
+  .detail-bg {
+    position:absolute; inset:-30px; z-index:-1;
+    background-size:cover; background-position:center;
+    filter: blur(28px) brightness(.5); -webkit-filter: blur(28px) brightness(.5);
+    transform: scale(1.1);
+  }
   .detail-img {
-    max-width:100%; max-height:70vh; border-radius:12px; object-fit:contain;
-    box-shadow: 0 8px 30px rgba(0,0,0,.5);
+    max-width:100%; max-height:68vh; border-radius:16px; object-fit:contain;
+    box-shadow: 0 12px 40px rgba(0,0,0,.6);
+    animation: detailIn .35s ease;
   }
+  @keyframes detailIn { from{opacity:0; transform:translateY(16px) scale(.96)} to{opacity:1; transform:none} }
+  /* 名字毛玻璃卡片 */
   .detail-name {
-    margin-top:16px; color:#fff; font-size:20px; font-weight:600; text-align:center;
+    margin-top:18px; color:#fff; font-size:20px; font-weight:600; text-align:center;
     word-break:break-all; max-width:100%; cursor:pointer;
-    border:1px dashed rgba(255,255,255,.3); padding:10px 16px; border-radius:10px;
+    background: rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    padding:12px 22px; border-radius:16px;
+    transition: background .2s, transform .1s;
+    user-select:none;
   }
-  .detail-name .copy-hint { font-size:12px; color:rgba(255,255,255,.5); font-weight:400; }
+  .detail-name:active { background: rgba(47,182,245,.35); transform: scale(.97); }
+  .detail-name .copy-hint { font-size:12px; color:rgba(255,255,255,.6); font-weight:400; margin-left:6px; }
+  /* 一键复制按钮 */
   .detail-copy {
-    margin-top:8px; padding:10px 32px; border:none; border-radius:10px;
-    background: var(--primary); color:#fff; font-size:15px; cursor:pointer;
+    margin-top:14px; padding:12px 36px; border:none; border-radius:30px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+    color:#fff; font-size:15px; font-weight:600; cursor:pointer; letter-spacing:.5px;
+    box-shadow: 0 6px 20px rgba(47,182,245,.4);
+    transition: transform .1s, box-shadow .2s, filter .2s;
   }
+  .detail-copy:active { transform: scale(.95); filter: brightness(.9); box-shadow: 0 3px 10px rgba(47,182,245,.3); }
+  /* 关闭按钮：左上角返回箭头 */
   .detail-close {
-    position:absolute; top:16px; right:20px; font-size:30px; color:#fff;
-    cursor:pointer; background:none; border:none; line-height:1;
+    position:absolute; top:14px; left:16px;
+    width:38px; height:38px; border-radius:50%;
+    font-size:20px; color:#fff; cursor:pointer;
+    background: rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    display:flex; align-items:center; justify-content:center;
+    transition: background .2s, transform .1s;
+    line-height:1;
+  }
+  .detail-close:active { background: rgba(47,182,245,.4); transform: scale(.92); }
+  /* 画师序号（底部小字） */
+  .detail-idx {
+    margin-top:10px; font-size:12px; color:rgba(255,255,255,.45);
   }
 
   /* 编辑弹窗 */
@@ -301,14 +338,14 @@
   .admin-upload .up-submit {
     width:100%; padding:14px; margin-top:4px;
     border:none; border-radius:12px; cursor:pointer;
-    background: linear-gradient(135deg, var(--primary), #2563eb);
+    background: linear-gradient(135deg, var(--primary), var(--primary-deep));
     color:#fff; font-size:16px; font-weight:600; letter-spacing:1px;
-    box-shadow: 0 4px 14px rgba(59,130,246,.35);
+    box-shadow: 0 4px 14px rgba(47,182,245,.35);
     transition: transform .1s, box-shadow .2s, filter .2s;
   }
   .admin-upload .up-submit:active {
     transform: scale(.96);
-    box-shadow: 0 2px 6px rgba(59,130,246,.25);
+    box-shadow: 0 2px 6px rgba(47,182,245,.25);
     filter: brightness(.92);
   }
   .admin-upload .msg { font-size:13px; text-align:center; margin-top:10px; min-height:18px; color: var(--sub); }
@@ -384,13 +421,15 @@
 
 <!-- 画师详情页 -->
 <div class="detail-overlay" id="detailOverlay">
-  <button class="detail-close" id="detailClose">×</button>
+  <div class="detail-bg" id="detailBg"></div>
+  <button class="detail-close" id="detailClose">←</button>
   <img class="detail-img" id="detailImg" alt="">
   <div class="detail-name" id="detailName" title="点击复制">
     <span id="detailNameText"></span>
-    <span class="copy-hint">（点击复制）</span>
+    <span class="copy-hint" id="detailHint">（点击复制）</span>
   </div>
   <button class="detail-copy" id="detailCopy">📋 一键复制</button>
+  <div class="detail-idx" id="detailIdx"></div>
 </div>
 
 <!-- 编辑画师弹窗 -->
@@ -701,7 +740,11 @@ function openDetail(id) {
   const a = findById(id);
   if (!a) return;
   $('detailImg').src = a.image_url;
+  $('detailBg').style.backgroundImage = "url('" + a.image_url + "')";
   $('detailNameText').textContent = a.name;
+  // 序号：显示在全部画师中的位置
+  const idx = artists.findIndex(x => String(x.id) === String(id));
+  $('detailIdx').textContent = (idx >= 0 ? (idx + 1) : '') + ' / ' + artists.length;
   $('detailOverlay').classList.add('show');
   document.body.style.overflow = 'hidden';
 }
@@ -723,13 +766,15 @@ function copyText(text) {
 }
 $('detailName').onclick = () => {
   copyText($('detailNameText').textContent).then(() => {
-    const h = $('detailName').querySelector('.copy-hint');
+    const h = $('detailHint');
+    if (navigator.vibrate) navigator.vibrate(20);
     h.textContent = '（已复制 ✓）';
     setTimeout(() => h.textContent = '（点击复制）', 1500);
   });
 };
 $('detailCopy').onclick = () => {
   copyText($('detailNameText').textContent).then(() => {
+    if (navigator.vibrate) navigator.vibrate(20);
     $('detailCopy').textContent = '已复制 ✓';
     setTimeout(() => $('detailCopy').textContent = '📋 一键复制', 1500);
   });
