@@ -239,6 +239,32 @@
   .edit-panel .msg.err { color:#ef4444; }
   .edit-panel .msg.ok { color:#22c55e; }
 
+  /* 管理员上传区块（主界面底部） */
+  .admin-upload {
+    margin:18px 4px 8px; padding:16px;
+    border:1px dashed var(--primary); border-radius:14px;
+    background: var(--card);
+  }
+  .admin-upload-title {
+    text-align:center; font-weight:600; font-size:15px; margin-bottom:12px;
+    color: var(--primary);
+  }
+  .admin-upload input[type=text] {
+    width:100%; padding:11px 12px; margin-bottom:12px;
+    border:1px solid var(--line); border-radius:10px;
+    background: var(--bg); color: var(--text); font-size:15px; outline:none;
+    box-sizing:border-box;
+  }
+  .admin-upload input[type=text]:focus { border-color: var(--primary); }
+  .admin-upload .file-label {
+    display:block; padding:11px 12px; margin-bottom:12px; text-align:center;
+    border:1px dashed var(--primary); border-radius:10px; color:var(--primary);
+    cursor:pointer; font-size:14px;
+  }
+  .admin-upload .msg { font-size:13px; text-align:center; margin-top:10px; min-height:18px; color: var(--sub); }
+  .admin-upload .msg.err { color:#ef4444; }
+  .admin-upload .msg.ok { color:#22c55e; }
+
   /* 底部导航 */
   .bottom-nav {
     display:flex; background: var(--nav-bg);
@@ -305,22 +331,13 @@
   </div>
 </div>
 
-<!-- 管理员弹窗 -->
+<!-- 管理员登录弹窗（仅验证密码用，验证通过即关闭回到主界面） -->
 <div class="admin-overlay" id="adminOverlay">
   <div class="admin-panel" id="adminPanel">
-    <h3>管理员模式</h3>
+    <h3>管理员验证</h3>
     <div id="loginArea">
       <input type="password" id="adminKey" placeholder="输入密钥" autocomplete="off">
       <button class="btn" id="verifyBtn">验证</button>
-    </div>
-    <div id="uploadArea" style="display:none">
-      <div class="author-note">署名：蓝丞</div>
-      <input type="text" id="upName" placeholder="画师名">
-      <label class="file-label" for="upFile">📷 选择效果图</label>
-      <input type="file" id="upFile" accept="image/*" style="display:none">
-      <button class="btn" id="uploadBtn">上传画师</button>
-      <div style="height:14px"></div>
-      <button class="btn secondary" id="logoutBtn">退出管理</button>
     </div>
     <div class="msg" id="adminMsg"></div>
   </div>
@@ -392,8 +409,7 @@ function renderTopLeft() {
     $('adminExitTop').onclick = () => {
       isAdmin = false;
       renderTopLeft();
-      render(); // 刷新卡片移除操作按钮
-      $('adminOverlay').classList.remove('show');
+      render(); // 刷新卡片移除操作按钮和上传区块
       showBanner('已退出管理员模式');
     };
   } else {
@@ -445,6 +461,15 @@ function searchHTML() {
     </div>
     <div class="suggest" id="suggest"></div>
     <div class="grid" id="grid"><div class="empty">输入关键词或点击搜索</div></div>
+    ${isAdmin ? `
+    <div class="admin-upload" id="adminUpload">
+      <div class="admin-upload-title">＋ 上传新画师</div>
+      <input type="text" id="upName" placeholder="画师名" autocomplete="off">
+      <label class="file-label" for="upFile">📷 选择效果图</label>
+      <input type="file" id="upFile" accept="image/*" style="display:none">
+      <button class="btn" id="uploadBtn" style="width:100%;margin-top:4px;">上传画师</button>
+      <div class="msg" id="uploadMsg"></div>
+    </div>` : ''}
   `;
 }
 function initSearch() {
@@ -595,7 +620,6 @@ async function deleteArtist(id) {
   const a = findById(id);
   if (!a) return;
   if (!confirm('确定要删除画师「' + a.name + '」吗？此操作不可恢复！')) return;
-  const msg = $('adminMsg');
   try {
     try {
       const fn = a.image_url.split('/').pop();
@@ -694,38 +718,40 @@ function openAdmin() {
   $('adminMsg').textContent = '';
   $('adminOverlay').classList.add('show');
   $('loginArea').style.display = 'block';
-  $('uploadArea').style.display = 'none';
   $('adminKey').value = '';
   if (!isAdmin) setTimeout(() => $('adminKey').focus(), 100);
+  bindUpload();
 }
 $('adminOverlay').addEventListener('click', e => { if (e.target === $('adminOverlay')) $('adminOverlay').classList.remove('show'); });
+
+// 上传区块按钮绑定（主界面管理员模式）
+function bindUpload() {
+  if (!$('uploadBtn')) return;
+  if ($('uploadBtn').dataset.bound) return;
+  $('uploadBtn').dataset.bound = '1';
+  $('uploadBtn').onclick = uploadNewArtist;
+}
 
 $('verifyBtn').onclick = () => {
   if ($('adminKey').value === ADMIN_KEY) {
     isAdmin = true;
-    $('loginArea').style.display = 'none';
-    $('uploadArea').style.display = 'block';
+    $('adminOverlay').classList.remove('show'); // 关闭验证弹窗，回到主界面
     $('adminMsg').textContent = '已进入管理员模式';
     $('adminMsg').className = 'msg ok';
     renderTopLeft();
-    render(); // 卡片显示删除/修改按钮
+    render(); // 网格显示删除/修改按钮 + 底部显示上传区块
+    bindUpload();
   } else {
     $('adminMsg').textContent = '密钥错误';
     $('adminMsg').className = 'msg err';
   }
 };
-$('logoutBtn').onclick = () => {
-  isAdmin = false;
-  $('adminOverlay').classList.remove('show');
-  renderTopLeft();
-  render();
-};
 
-// ---- 上传画师 ----
-$('uploadBtn').onclick = async () => {
+// ---- 上传画师（主界面管理员模式下显示）----
+async function uploadNewArtist() {
   const name = $('upName').value.trim();
   const file = $('upFile').files[0];
-  const msg = $('adminMsg');
+  const msg = $('uploadMsg');
   if (!name) { msg.textContent = '请填写画师名'; msg.className = 'msg err'; return; }
   if (!file) { msg.textContent = '请选择效果图'; msg.className = 'msg err'; return; }
 
@@ -747,10 +773,11 @@ $('uploadBtn').onclick = async () => {
     $('upName').value = ''; $('upFile').value = '';
     await loadArtists();
     render();
+    bindUpload();
   } catch(e) {
     msg.textContent = '上传失败：' + e.message; msg.className = 'msg err';
   }
-};
+}
 
 // 用 XMLHttpRequest 上传文件（手机兼容性最好，避免 Failed to fetch）
 function uploadImageXHR(file, safeName) {
