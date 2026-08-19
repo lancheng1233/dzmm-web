@@ -52,13 +52,32 @@
     padding: 4px 10px; border-radius: 10px;
     transition: background .2s;
   }
-  .topbar .top-left { width:44px; }
+  .topbar .top-left { width:44px; display:flex; align-items:center; }
   .admin-exit-btn {
     font-size:13px; cursor:pointer; border:none; border-radius:8px;
     background: var(--primary); color:#fff; padding:6px 12px;
-    display:none; white-space:nowrap;
+    white-space:nowrap;
   }
-  .topbar .logo:active { background: var(--line); }
+  /* 结果页返回箭头 */
+  .back-btn {
+    font-size:22px; cursor:pointer; border:none; background:none; color:var(--text);
+    padding:2px 4px; line-height:1;
+  }
+  .topbar .logo {
+    position:absolute; left:50%; transform:translateX(-50%);
+    font-size:26px; cursor:pointer; user-select:none;
+    padding:4px 10px; border-radius:10px;
+    transition: background .2s, transform .2s;
+  }
+  /* 大号透明热区，扩大长按识别范围 */
+  .logo-hotzone {
+    position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:90px; height:60px; cursor:pointer; z-index:5;
+  }
+  /* 长按按下时的视觉反馈 */
+  .topbar .logo.pressing {
+    background: var(--primary); color:#fff; transform:translateX(-50%) scale(1.15);
+  }
   .theme-btn {
     font-size: 22px; cursor: pointer; border:none; background:none;
     padding: 6px; border-radius: 50%;
@@ -265,6 +284,34 @@
   .admin-upload .msg.err { color:#ef4444; }
   .admin-upload .msg.ok { color:#22c55e; }
 
+  /* 搜索结果页头部 */
+  .res-head {
+    margin-bottom:12px; padding:10px 4px;
+    font-size:14px; color:var(--sub);
+  }
+  .res-count { font-weight:600; color:var(--text); }
+
+  /* 搜索记录 */
+  .history-box {
+    margin-top:16px; padding:14px;
+    background: var(--card); border:1px solid var(--line);
+    border-radius:12px; box-shadow: var(--shadow);
+  }
+  .history-title {
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:14px; color:var(--sub); margin-bottom:10px;
+  }
+  .history-clear {
+    border:none; background:none; color:var(--primary); font-size:13px; cursor:pointer;
+  }
+  .history-tags { display:flex; flex-wrap:wrap; gap:8px; }
+  .history-tag {
+    padding:6px 12px; border-radius:20px; font-size:13px;
+    background: var(--bg); border:1px solid var(--line); color:var(--text);
+    cursor:pointer; transition:background .2s;
+  }
+  .history-tag:active { background: var(--primary); color:#fff; }
+
   /* 底部导航 */
   .bottom-nav {
     display:flex; background: var(--nav-bg);
@@ -286,7 +333,7 @@
 <!-- 顶部栏 -->
 <div class="topbar">
   <span class="top-left" id="topLeft"></span>
-  <span class="logo" id="logo">🕊</span>
+  <span class="logo" id="logo">🕊<span class="logo-hotzone" id="logoHot"></span></span>
   <button class="theme-btn" id="themeBtn" title="切换日夜">🌙</button>
 </div>
 
@@ -355,6 +402,8 @@ const AUTHOR = '蓝丞';
 
 let artists = [];
 let tab = 'search';
+let view = 'search'; // search=主页搜索 / results=搜索结果页
+let lastQuery = '';
 let isAdmin = false;
 let editingTarget = null;
 
@@ -404,17 +453,31 @@ function renderNavSign() {
 // ---- 顶栏左上角（管理员退出按钮）----
 function renderTopLeft() {
   const tl = $('topLeft');
-  if (isAdmin) {
-    tl.innerHTML = '<button class="admin-exit-btn" id="adminExitTop">退出管理</button>';
+  let html = '';
+  if (tab === 'search' && view === 'results') {
+    // 搜索结果页：返回箭头
+    html = '<button class="back-btn" id="backBtn">←</button>';
+  } else if (isAdmin) {
+    // 管理员模式：退出管理
+    html = '<button class="admin-exit-btn" id="adminExitTop">退出管理</button>';
+  }
+  tl.innerHTML = html;
+  if (html.includes('backBtn')) {
+    $('backBtn').onclick = () => { backToSearch(); };
+  } else if (html.includes('adminExitTop')) {
     $('adminExitTop').onclick = () => {
       isAdmin = false;
       renderTopLeft();
-      render(); // 刷新卡片移除操作按钮和上传区块
+      render();
       showBanner('已退出管理员模式');
     };
-  } else {
-    tl.innerHTML = '';
   }
+}
+
+// 从结果页返回搜索主页
+function backToSearch() {
+  view = 'search';
+  render();
 }
 function showBanner(msg) {
   const b = $('banner');
@@ -443,6 +506,13 @@ function checkNew() {
 // ---- Tab 切换 ----
 function render() {
   const c = $('content');
+  if (tab === 'search' && view === 'results') {
+    // 搜索结果页：独立渲染（带返回 + 全部结果）
+    c.innerHTML = resultsHTML();
+    renderGrid($('grid'), lastResults);
+    renderTopLeft();
+    return;
+  }
   if (tab === 'search') c.innerHTML = searchHTML();
   else if (tab === 'random') c.innerHTML = randomHTML();
   else if (tab === 'stat') c.innerHTML = statHTML();
@@ -450,6 +520,47 @@ function render() {
   document.querySelector(`.nav-item[data-tab="${tab}"]`).classList.add('active');
   if (tab === 'search') initSearch();
   if (tab === 'random') initRandom();
+  renderTopLeft();
+}
+
+let lastResults = []; // 保存搜索结果
+
+// ---- 搜索结果页 ----
+function resultsHTML() {
+  const count = lastResults.length;
+  return `
+    <div class="res-head">
+      <span class="res-count">「${lastQuery}」共 ${count} 位画师</span>
+    </div>
+    <div class="grid" id="grid"></div>
+  `;
+}
+
+// ---- 搜索记录 ----
+const HISTORY_KEY = 'dzmm_search_history';
+function getHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch(e) { return []; }
+}
+function addHistory(q) {
+  if (!q) return;
+  let h = getHistory().filter(x => x.toLowerCase() !== q.toLowerCase());
+  h.unshift(q);
+  h = h.slice(0, 10);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(h));
+}
+function historyHTML() {
+  const h = getHistory();
+  if (!h.length) return '';
+  return `
+    <div class="history-box">
+      <div class="history-title">🕘 搜索记录
+        <button class="history-clear" id="clearHistory">清空</button>
+      </div>
+      <div class="history-tags">
+        ${h.map(x => `<span class="history-tag" data-q="${x.replace(/"/g,'&quot;')}">${x}</span>`).join('')}
+      </div>
+    </div>
+  `;
 }
 
 // ---- 检索 Tab ----
@@ -461,6 +572,7 @@ function searchHTML() {
     </div>
     <div class="suggest" id="suggest"></div>
     <div class="grid" id="grid"><div class="empty">输入关键词或点击搜索</div></div>
+    ${historyHTML()}
     ${isAdmin ? `
     <div class="admin-upload" id="adminUpload">
       <div class="admin-upload-title">＋ 上传新画师</div>
@@ -475,7 +587,14 @@ function searchHTML() {
 function initSearch() {
   const input = $('searchInput');
   const suggest = $('suggest');
-  const grid = $('grid');
+
+  // 历史记录点击 / 清空
+  const clearBtn = $('clearHistory');
+  if (clearBtn) clearBtn.onclick = () => { localStorage.removeItem(HISTORY_KEY); render(); };
+  document.querySelectorAll('.history-tag').forEach(t => {
+    t.onclick = () => { const q = t.dataset.q; doSearch(q); };
+  });
+
   input.addEventListener('input', () => {
     const q = input.value.trim().toLowerCase();
     const matches = q ? artists.filter(a => a.name.toLowerCase().includes(q)) : [];
@@ -486,7 +605,7 @@ function initSearch() {
         const d = document.createElement('div');
         d.className = 'suggest-item';
         d.textContent = a.name;
-        d.onclick = () => { input.value = a.name; suggest.style.display = 'none'; showGrid([a]); };
+        d.onclick = () => { input.value = a.name; suggest.style.display = 'none'; doSearch(a.name); };
         suggest.appendChild(d);
       });
     } else {
@@ -495,13 +614,28 @@ function initSearch() {
   });
   input.addEventListener('blur', () => setTimeout(() => suggest.style.display = 'none', 200));
   $('searchBtn').onclick = () => {
-    const q = input.value.trim().toLowerCase();
-    const matches = q ? artists.filter(a => a.name.toLowerCase().includes(q)) : artists;
-    showGrid(matches);
+    const q = input.value.trim();
+    if (q) { suggest.style.display = 'none'; doSearch(q); }
   };
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const q = input.value.trim();
+      if (q) { suggest.style.display = 'none'; doSearch(q); }
+    }
+  });
 }
-function showGrid(list) {
-  const grid = $('grid');
+
+// 执行搜索 → 进入结果页
+function doSearch(q) {
+  lastQuery = q;
+  lastResults = q ? artists.filter(a => a.name.toLowerCase().includes(q.toLowerCase())) : [];
+  addHistory(q);
+  view = 'results';
+  render();
+}
+
+// 渲染画师网格（通用）
+function renderGrid(grid, list) {
   if (!list.length) { grid.innerHTML = '<div class="empty">未找到匹配画师</div>'; return; }
   grid.innerHTML = list.map(a => `
     <div class="card">
@@ -703,16 +837,34 @@ $('themeBtn').onclick = () => {
   applyTheme();
 };
 
-// ---- 隐藏入口：长按 5 秒 ----
+// ---- 隐藏入口：长按进入管理员验证 ----
 let logoTimer = null;
-$('logo').addEventListener('touchstart', startLongPress);
-$('logo').addEventListener('mousedown', startLongPress);
-function startLongPress(e) { e.preventDefault(); logoTimer = setTimeout(openAdmin, 5000); }
-$('logo').addEventListener('touchend', clearLongPress);
-$('logo').addEventListener('touchmove', clearLongPress);
-$('logo').addEventListener('mouseup', clearLongPress);
-$('logo').addEventListener('mouseleave', clearLongPress);
-function clearLongPress() { if (logoTimer) { clearTimeout(logoTimer); logoTimer = null; } }
+const LOGO_HOLD_MS = 2500; // 长按 2.5 秒（原 5 秒，太慢）
+
+function startLongPress(e) {
+  e.preventDefault();
+  const logo = $('logo');
+  logo.classList.add('pressing'); // 按下即给视觉反馈
+  // 轻震动（支持的设备）
+  if (navigator.vibrate) navigator.vibrate(30);
+  logoTimer = setTimeout(() => {
+    openAdmin();
+    clearLongPress();
+  }, LOGO_HOLD_MS);
+}
+function clearLongPress() {
+  if (logoTimer) { clearTimeout(logoTimer); logoTimer = null; }
+  $('logo').classList.remove('pressing');
+}
+// logo 与其内部大热区共用监听（事件冒泡），扩大识别范围
+const logoEl = $('logo');
+logoEl.addEventListener('touchstart', startLongPress, { passive:false });
+logoEl.addEventListener('mousedown', startLongPress);
+logoEl.addEventListener('touchend', clearLongPress);
+logoEl.addEventListener('touchmove', clearLongPress);
+logoEl.addEventListener('touchcancel', clearLongPress);
+logoEl.addEventListener('mouseup', clearLongPress);
+logoEl.addEventListener('mouseleave', clearLongPress);
 
 function openAdmin() {
   $('adminMsg').textContent = '';
@@ -806,7 +958,11 @@ function uploadImageXHR(file, safeName) {
 
 // ---- 初始化 ----
 document.querySelectorAll('.nav-item').forEach(n => {
-  n.onclick = () => { tab = n.dataset.tab; render(); };
+  n.onclick = () => {
+    tab = n.dataset.tab;
+    view = 'search'; // 切换 tab 时重置视图
+    render();
+  };
 });
 applyTheme();
 renderTopLeft();
