@@ -275,10 +275,41 @@
     box-sizing:border-box;
   }
   .admin-upload input[type=text]:focus { border-color: var(--primary); }
-  .admin-upload .file-label {
-    display:block; padding:11px 12px; margin-bottom:12px; text-align:center;
-    border:1px dashed var(--primary); border-radius:10px; color:var(--primary);
-    cursor:pointer; font-size:14px;
+
+  /* 图片预览框（点击选图） */
+  .up-preview {
+    width:100%; aspect-ratio:1/1; margin-bottom:12px;
+    border:2px dashed var(--primary); border-radius:12px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; overflow:hidden; position:relative;
+    background: var(--bg);
+    transition: border-color .2s, background .2s, transform .1s;
+  }
+  .up-preview:active { background: var(--line); transform: scale(.99); }
+  .up-preview img {
+    position:absolute; inset:0; width:100%; height:100%;
+    object-fit:cover; display:none;
+  }
+  .up-preview.has-img { border-style:solid; border-color: var(--primary); }
+  .up-preview-hint {
+    text-align:center; color:var(--sub); font-size:15px; line-height:1.7;
+    pointer-events:none;
+  }
+  .up-preview-hint span { font-size:12px; color:var(--sub); opacity:.7; }
+
+  /* 美化上传按钮 + 按压反馈 */
+  .admin-upload .up-submit {
+    width:100%; padding:14px; margin-top:4px;
+    border:none; border-radius:12px; cursor:pointer;
+    background: linear-gradient(135deg, var(--primary), #2563eb);
+    color:#fff; font-size:16px; font-weight:600; letter-spacing:1px;
+    box-shadow: 0 4px 14px rgba(59,130,246,.35);
+    transition: transform .1s, box-shadow .2s, filter .2s;
+  }
+  .admin-upload .up-submit:active {
+    transform: scale(.96);
+    box-shadow: 0 2px 6px rgba(59,130,246,.25);
+    filter: brightness(.92);
   }
   .admin-upload .msg { font-size:13px; text-align:center; margin-top:10px; min-height:18px; color: var(--sub); }
   .admin-upload .msg.err { color:#ef4444; }
@@ -580,10 +611,13 @@ function searchHTML() {
     ${isAdmin ? `
     <div class="admin-upload" id="adminUpload">
       <div class="admin-upload-title">＋ 上传新画师</div>
-      <input type="text" id="upName" placeholder="画师名" autocomplete="off">
-      <label class="file-label" for="upFile">📷 选择效果图</label>
+      <div class="up-preview" id="upPreviewWrap" onclick="document.getElementById('upFile').click()">
+        <img id="upPreviewImg" alt="">
+        <div class="up-preview-hint" id="upPreviewHint">📷 点击选择效果图<br><span>支持 JPG / PNG</span></div>
+      </div>
       <input type="file" id="upFile" accept="image/*" style="display:none">
-      <button class="btn" id="uploadBtn" style="width:100%;margin-top:4px;" onclick="uploadNewArtist()">上传画师</button>
+      <input type="text" id="upName" placeholder="画师名" autocomplete="off">
+      <button class="btn up-submit" id="uploadBtn" onclick="uploadNewArtist()">⬆ 上传画师</button>
       <div class="msg" id="uploadMsg"></div>
     </div>` : ''}
   `;
@@ -593,7 +627,10 @@ function initSearch() {
   const suggest = $('suggest');
 
   // 管理员上传区块按钮（若渲染了就绑定）
-  if (isAdmin) bindUpload();
+  if (isAdmin) {
+    bindUpload();
+    bindUpPreview();
+  }
 
   // 历史记录点击 / 清空
   const clearBtn = $('clearHistory');
@@ -889,6 +926,30 @@ function bindUpload() {
   if (!btn) return;
   // 防止重复绑定导致异常：直接赋值（幂等）
   btn.onclick = uploadNewArtist;
+}
+
+// 选择图片后预览显示在虚线框里
+function bindUpPreview() {
+  const fileInput = $('upFile');
+  const preview = $('upPreviewImg');
+  const wrap = $('upPreviewWrap');
+  const hint = $('upPreviewHint');
+  if (!fileInput || !preview || !wrap) return;
+  if (fileInput.dataset.bound) return;
+  fileInput.dataset.bound = '1';
+  fileInput.onchange = () => {
+    const f = fileInput.files[0];
+    if (!f) return;
+    if (!f.type.startsWith('image/')) { alert('请选择图片文件'); fileInput.value = ''; return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      preview.src = e.target.result;
+      preview.style.display = 'block';
+      wrap.classList.add('has-img');
+      if (hint) hint.style.display = 'none';
+    };
+    reader.readAsDataURL(f);
+  };
 }
 
 $('verifyBtn').onclick = () => {
