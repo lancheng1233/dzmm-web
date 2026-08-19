@@ -35,3 +35,17 @@ create policy "allow anon read images"
 on storage.objects for select
 to anon, authenticated
 using (bucket_id = 'artist-images');
+
+-- 允许 anon 删除图片(管理员删除画师时清理)
+drop policy if exists "allow anon delete images" on storage.objects;
+create policy "allow anon delete images"
+on storage.objects for delete
+to anon, authenticated
+using (bucket_id = 'artist-images');
+
+-- 3. artists 表：允许 anon 删除记录(管理员删除画师)
+drop policy if exists "allow anon delete artists" on public.artists;
+create policy "allow anon delete artists"
+on public.artists for delete
+to anon, authenticated
+using (true);

@@ -440,6 +440,10 @@ async function loadArtists() {
   try {
     const data = await sbGet('/rest/v1/artists?select=id,name,image_url,created_at&order=created_at.asc');
     artists = data;
+    // 若在结果页，同步刷新结果集，让删除/修改后立即反映到结果页
+    if (lastQuery) {
+      lastResults = lastQuery ? artists.filter(a => a.name.toLowerCase().includes(lastQuery.toLowerCase())) : [];
+    }
     renderNavSign();
     checkNew();
   } catch(e) { console.error(e); }
