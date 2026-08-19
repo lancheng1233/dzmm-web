@@ -592,6 +592,9 @@ function initSearch() {
   const input = $('searchInput');
   const suggest = $('suggest');
 
+  // 管理员上传区块按钮（若渲染了就绑定）
+  if (isAdmin) bindUpload();
+
   // 历史记录点击 / 清空
   const clearBtn = $('clearHistory');
   if (clearBtn) clearBtn.onclick = () => { localStorage.removeItem(HISTORY_KEY); render(); };
@@ -882,10 +885,10 @@ $('adminOverlay').addEventListener('click', e => { if (e.target === $('adminOver
 
 // 上传区块按钮绑定（主界面管理员模式）
 function bindUpload() {
-  if (!$('uploadBtn')) return;
-  if ($('uploadBtn').dataset.bound) return;
-  $('uploadBtn').dataset.bound = '1';
-  $('uploadBtn').onclick = uploadNewArtist;
+  const btn = $('uploadBtn');
+  if (!btn) return;
+  // 防止重复绑定导致异常：直接赋值（幂等）
+  btn.onclick = uploadNewArtist;
 }
 
 $('verifyBtn').onclick = () => {
@@ -894,6 +897,8 @@ $('verifyBtn').onclick = () => {
     $('adminOverlay').classList.remove('show'); // 关闭验证弹窗，回到主界面
     $('adminMsg').textContent = '已进入管理员模式';
     $('adminMsg').className = 'msg ok';
+    view = 'search'; // 强制回到主页搜索视图，保证上传区块显示
+    tab = 'search';
     renderTopLeft();
     render(); // 网格显示删除/修改按钮 + 底部显示上传区块
     bindUpload();
