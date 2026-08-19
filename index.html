@@ -476,17 +476,9 @@ $('uploadBtn').onclick = async () => {
   try {
     // 1. 用时间戳+随机数生成安全的图片文件名（存储桶不支持中文，避免InvalidKey）
     const safeName = 'upload_' + Date.now() + '_' + Math.random().toString(36).slice(2,8) + '.jpg';
-    const up = await fetch(SUPABASE_URL + '/storage/v1/object/' + BUCKET + '/' + safeName + '?upsert=true', {
-      method: 'POST',
-      headers: { apikey: ANON_KEY, Authorization: 'Bearer ' + ANON_KEY, 'Content-Type': file.type },
-      body: file
-    });
-    if (!up.ok) {
-      let errText = '';
-      try { errText = await up.text(); } catch(e){}
-      throw new Error('图片上传失败(' + up.status + ') ' + errText);
-    }
-    const imageUrl = SUPABASE_URL + '/storage/v1/object/public/' + BUCKET + '/' + safeName;
+    // 用 FormData + XHR 上传，手机浏览器兼容性最好（fetch上传二进制在移动端易Failed to fetch）
+    const imageUrl = await uploadImageXHR(file, safeName);
+    if (!imageUrl) throw new Error('图片上传失败');
 
     // 2. 写库（用 anon key）——画师名支持中文，存在name字段
     await sbPost('/rest/v1/artists', { name, image_url: imageUrl }, false);
@@ -497,6 +489,31 @@ $('uploadBtn').onclick = async () => {
     msg.textContent = '上传失败：' + e.message; msg.className = 'msg err';
   }
 };
+
+// 用 XMLHttpRequest 上传文件（手机兼容性最好，避免 Failed to fetch）
+function uploadImageXHR(file, safeName) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const url = SUPABASE_URL + '/storage/v1/object/' + BUCKET + '/' + safeName + '?upsert=true';
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader('apikey', ANON_KEY);
+    xhr.setRequestHeader('Authorization', 'Bearer ' + ANON_KEY);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.timeout = 60000;
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(SUPABASE_URL + '/storage/v1/object/public/' + BUCKET + '/' + safeName);
+      } else {
+        let msg = 'HTTP ' + xhr.status;
+        try { const j = JSON.parse(xhr.responseText); if (j.message) msg = j.message; } catch(e){}
+        reject(new Error('图片上传失败(' + msg + ')'));
+      }
+    };
+    xhr.onerror = () => reject(new Error('网络错误(无法连接上传服务)'));
+    xhr.ontimeout = () => reject(new Error('上传超时'));
+    xhr.send(file);
+  });
+}
 
 // ---- 初始化 ----
 document.querySelectorAll('.nav-item').forEach(n => {
