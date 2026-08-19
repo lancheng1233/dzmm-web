@@ -474,9 +474,9 @@ $('uploadBtn').onclick = async () => {
 
   msg.textContent = '上传中...'; msg.className = 'msg';
   try {
-    // 1. 上传图片（用 anon key）—— 若已存在则覆盖(upsert)
-    const upName = encodeURIComponent(name + '.jpg');
-    const up = await fetch(SUPABASE_URL + '/storage/v1/object/' + BUCKET + '/' + upName + '?upsert=true', {
+    // 1. 用时间戳+随机数生成安全的图片文件名（存储桶不支持中文，避免InvalidKey）
+    const safeName = 'upload_' + Date.now() + '_' + Math.random().toString(36).slice(2,8) + '.jpg';
+    const up = await fetch(SUPABASE_URL + '/storage/v1/object/' + BUCKET + '/' + safeName + '?upsert=true', {
       method: 'POST',
       headers: { apikey: ANON_KEY, Authorization: 'Bearer ' + ANON_KEY, 'Content-Type': file.type },
       body: file
@@ -486,9 +486,9 @@ $('uploadBtn').onclick = async () => {
       try { errText = await up.text(); } catch(e){}
       throw new Error('图片上传失败(' + up.status + ') ' + errText);
     }
-    const imageUrl = SUPABASE_URL + '/storage/v1/object/public/' + BUCKET + '/' + upName;
+    const imageUrl = SUPABASE_URL + '/storage/v1/object/public/' + BUCKET + '/' + safeName;
 
-    // 2. 写库（用 anon key）
+    // 2. 写库（用 anon key）——画师名支持中文，存在name字段
     await sbPost('/rest/v1/artists', { name, image_url: imageUrl }, false);
     msg.textContent = '✅ 上传成功：' + name; msg.className = 'msg ok';
     $('upName').value = ''; $('upFile').value = '';
