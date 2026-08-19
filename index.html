@@ -52,6 +52,12 @@
     padding: 4px 10px; border-radius: 10px;
     transition: background .2s;
   }
+  .topbar .top-left { width:44px; }
+  .admin-exit-btn {
+    font-size:13px; cursor:pointer; border:none; border-radius:8px;
+    background: var(--primary); color:#fff; padding:6px 12px;
+    display:none; white-space:nowrap;
+  }
   .topbar .logo:active { background: var(--line); }
   .theme-btn {
     font-size: 22px; cursor: pointer; border:none; background:none;
@@ -99,8 +105,17 @@
     background: var(--card); border-radius: 12px; overflow:hidden;
     box-shadow: var(--shadow); border:1px solid var(--line);
   }
-  .card img { width:100%; aspect-ratio:1/1; object-fit:cover; display:block; }
-  .card .name { padding:8px 10px; font-size:14px; text-align:center; color:var(--text); }
+  .card img { width:100%; aspect-ratio:1/1; object-fit:cover; display:block; cursor:pointer; }
+  .card .name { padding:8px 10px; font-size:14px; text-align:center; color:var(--text); cursor:pointer; }
+  /* 管理员卡片操作按钮 */
+  .card-actions { display:flex; border-top:1px solid var(--line); }
+  .card-actions button {
+    flex:1; padding:9px 0; border:none; font-size:13px; cursor:pointer; background:transparent;
+    color:var(--sub); transition:background .2s;
+  }
+  .card-actions button + button { border-left:1px solid var(--line); }
+  .card-actions button.edit:hover { background: var(--primary); color:#fff; }
+  .card-actions button.del:hover { background:#ef4444; color:#fff; }
 
   .empty { text-align:center; color:var(--sub); padding:40px 0; font-size:14px; }
 
@@ -167,6 +182,63 @@
   .admin-panel .msg.ok { color:#22c55e; }
   .admin-panel .author-note { text-align:center; color: var(--sub); font-size:13px; margin-bottom:10px; }
 
+  /* 画师详情页 */
+  .detail-overlay {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.92);
+    z-index:90; align-items:center; justify-content:center; padding:16px;
+    flex-direction:column;
+  }
+  .detail-overlay.show { display:flex; }
+  .detail-img {
+    max-width:100%; max-height:70vh; border-radius:12px; object-fit:contain;
+    box-shadow: 0 8px 30px rgba(0,0,0,.5);
+  }
+  .detail-name {
+    margin-top:16px; color:#fff; font-size:20px; font-weight:600; text-align:center;
+    word-break:break-all; max-width:100%; cursor:pointer;
+    border:1px dashed rgba(255,255,255,.3); padding:10px 16px; border-radius:10px;
+  }
+  .detail-name .copy-hint { font-size:12px; color:rgba(255,255,255,.5); font-weight:400; }
+  .detail-copy {
+    margin-top:8px; padding:10px 32px; border:none; border-radius:10px;
+    background: var(--primary); color:#fff; font-size:15px; cursor:pointer;
+  }
+  .detail-close {
+    position:absolute; top:16px; right:20px; font-size:30px; color:#fff;
+    cursor:pointer; background:none; border:none; line-height:1;
+  }
+
+  /* 编辑弹窗 */
+  .edit-overlay {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.55);
+    z-index:110; align-items:center; justify-content:center; padding:20px;
+  }
+  .edit-overlay.show { display:flex; }
+  .edit-panel {
+    background: var(--card); border-radius:16px; padding:24px; width:100%; max-width:360px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.3);
+  }
+  .edit-panel h3 { margin-bottom:6px; font-size:17px; text-align:center; }
+  .edit-panel .edit-old { text-align:center; color:var(--sub); font-size:13px; margin-bottom:14px; word-break:break-all; }
+  .edit-panel input {
+    width:100%; padding:11px 12px; margin-bottom:12px;
+    border:1px solid var(--line); border-radius:10px; background:var(--bg); color:var(--text);
+    font-size:15px; outline:none;
+  }
+  .edit-panel input:focus { border-color: var(--primary); }
+  .edit-panel .file-label {
+    display:block; padding:11px 12px; margin-bottom:12px; text-align:center;
+    border:1px dashed var(--primary); border-radius:10px; color:var(--primary);
+    cursor:pointer; font-size:14px;
+  }
+  .edit-panel .btn-row { display:flex; gap:10px; margin-top:4px; }
+  .edit-panel .btn { flex:1; padding:12px; border:none; border-radius:10px; font-size:15px; cursor:pointer; }
+  .edit-panel .btn.save { background: var(--primary); color:#fff; }
+  .edit-panel .btn.cancel { background: var(--line); color: var(--text); }
+  .edit-panel .msg { font-size:13px; text-align:center; margin-top:10px; min-height:18px; color: var(--sub); }
+  .edit-panel .msg.err { color:#ef4444; }
+  .edit-panel .msg.ok { color:#22c55e; }
+
   /* 底部导航 */
   .bottom-nav {
     display:flex; background: var(--nav-bg);
@@ -187,7 +259,7 @@
 
 <!-- 顶部栏 -->
 <div class="topbar">
-  <span></span>
+  <span class="top-left" id="topLeft"></span>
   <span class="logo" id="logo">🕊</span>
   <button class="theme-btn" id="themeBtn" title="切换日夜">🌙</button>
 </div>
@@ -206,6 +278,33 @@
 </div>
 <div class="nav-sign" id="navSign"></div>
 
+<!-- 画师详情页 -->
+<div class="detail-overlay" id="detailOverlay">
+  <button class="detail-close" id="detailClose">×</button>
+  <img class="detail-img" id="detailImg" alt="">
+  <div class="detail-name" id="detailName" title="点击复制">
+    <span id="detailNameText"></span>
+    <span class="copy-hint">（点击复制）</span>
+  </div>
+  <button class="detail-copy" id="detailCopy">📋 一键复制</button>
+</div>
+
+<!-- 编辑画师弹窗 -->
+<div class="edit-overlay" id="editOverlay">
+  <div class="edit-panel">
+    <h3>修改画师</h3>
+    <div class="edit-old" id="editOld"></div>
+    <input type="text" id="editName" placeholder="画师名">
+    <label class="file-label" for="editFile">📷 更换效果图（可选）</label>
+    <input type="file" id="editFile" accept="image/*" style="display:none">
+    <div class="btn-row">
+      <button class="btn save" id="editSaveBtn">保存</button>
+      <button class="btn cancel" id="editCancelBtn">取消</button>
+    </div>
+    <div class="msg" id="editMsg"></div>
+  </div>
+</div>
+
 <!-- 管理员弹窗 -->
 <div class="admin-overlay" id="adminOverlay">
   <div class="admin-panel" id="adminPanel">
@@ -220,9 +319,7 @@
       <label class="file-label" for="upFile">📷 选择效果图</label>
       <input type="file" id="upFile" accept="image/*" style="display:none">
       <button class="btn" id="uploadBtn">上传画师</button>
-      <hr style="border:none;border-top:1px solid var(--line);margin:14px 0">
-      <input type="text" id="delName" placeholder="输入要删除的画师名">
-      <button class="btn" id="delBtn" style="background:#ef4444">删除画师</button>
+      <div style="height:14px"></div>
       <button class="btn secondary" id="logoutBtn">退出管理</button>
     </div>
     <div class="msg" id="adminMsg"></div>
@@ -242,6 +339,7 @@ const AUTHOR = '蓝丞';
 let artists = [];
 let tab = 'search';
 let isAdmin = false;
+let editingTarget = null;
 
 const $ = id => document.getElementById(id);
 
@@ -274,7 +372,7 @@ async function sbDelete(path, useService) {
 // ---- 加载数据 ----
 async function loadArtists() {
   try {
-    const data = await sbGet('/rest/v1/artists?select=name,image_url,created_at&order=created_at.asc');
+    const data = await sbGet('/rest/v1/artists?select=id,name,image_url,created_at&order=created_at.asc');
     artists = data;
     renderNavSign();
     checkNew();
@@ -284,6 +382,29 @@ async function loadArtists() {
 // ---- 底部署名 ----
 function renderNavSign() {
   $('navSign').textContent = AUTHOR + ' · 共 ' + artists.length + ' 位画师';
+}
+
+// ---- 顶栏左上角（管理员退出按钮）----
+function renderTopLeft() {
+  const tl = $('topLeft');
+  if (isAdmin) {
+    tl.innerHTML = '<button class="admin-exit-btn" id="adminExitTop">退出管理</button>';
+    $('adminExitTop').onclick = () => {
+      isAdmin = false;
+      renderTopLeft();
+      render(); // 刷新卡片移除操作按钮
+      $('adminOverlay').classList.remove('show');
+      showBanner('已退出管理员模式');
+    };
+  } else {
+    tl.innerHTML = '';
+  }
+}
+function showBanner(msg) {
+  const b = $('banner');
+  b.textContent = msg;
+  b.style.display = 'block';
+  setTimeout(() => b.style.display = 'none', 3000);
 }
 
 // ---- 更新提示 ----
@@ -359,10 +480,134 @@ function showGrid(list) {
   if (!list.length) { grid.innerHTML = '<div class="empty">未找到匹配画师</div>'; return; }
   grid.innerHTML = list.map(a => `
     <div class="card">
-      <img src="${a.image_url}" alt="${a.name}" loading="lazy" referrerpolicy="no-referrer">
-      <div class="name">${a.name}</div>
+      <img src="${a.image_url}" alt="${a.name}" loading="lazy" referrerpolicy="no-referrer" onclick="openDetail('${a.id}')">
+      <div class="name" onclick="openDetail('${a.id}')">${a.name}</div>
+      ${isAdmin ? `
+      <div class="card-actions">
+        <button class="edit" onclick="event.stopPropagation();openEdit('${a.id}')">修改</button>
+        <button class="del" onclick="event.stopPropagation();deleteArtist('${a.id}')">删除</button>
+      </div>` : ''}
     </div>
   `).join('');
+}
+
+function findById(id) { return artists.find(x => String(x.id) === String(id)); }
+
+// ---- 画师详情页 ----
+function openDetail(id) {
+  const a = findById(id);
+  if (!a) return;
+  $('detailImg').src = a.image_url;
+  $('detailNameText').textContent = a.name;
+  $('detailOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+$('detailClose').onclick = () => {
+  $('detailOverlay').classList.remove('show');
+  document.body.style.overflow = '';
+};
+$('detailOverlay').addEventListener('click', e => { if (e.target === $('detailOverlay')) { $('detailOverlay').classList.remove('show'); document.body.style.overflow = ''; } });
+
+function copyText(text) {
+  if (navigator.clipboard) return navigator.clipboard.writeText(text);
+  return new Promise((res, rej) => {
+    const t = document.createElement('textarea');
+    t.value = text; t.style.position='fixed'; t.style.opacity='0';
+    document.body.appendChild(t); t.select();
+    try { document.execCommand('copy'); res(); } catch(e){ rej(e); }
+    t.remove();
+  });
+}
+$('detailName').onclick = () => {
+  copyText($('detailNameText').textContent).then(() => {
+    const h = $('detailName').querySelector('.copy-hint');
+    h.textContent = '（已复制 ✓）';
+    setTimeout(() => h.textContent = '（点击复制）', 1500);
+  });
+};
+$('detailCopy').onclick = () => {
+  copyText($('detailNameText').textContent).then(() => {
+    $('detailCopy').textContent = '已复制 ✓';
+    setTimeout(() => $('detailCopy').textContent = '📋 一键复制', 1500);
+  });
+};
+
+// ---- 编辑画师 ----
+let editIdx = null;
+function openEdit(id) {
+  const a = findById(id);
+  if (!a) return;
+  editIdx = id;
+  editingTarget = a;
+  $('editOld').textContent = '当前：' + a.name;
+  $('editName').value = a.name;
+  $('editFile').value = '';
+  $('editMsg').textContent = '';
+  $('editMsg').className = 'msg';
+  $('editOverlay').classList.add('show');
+}
+$('editCancelBtn').onclick = () => $('editOverlay').classList.remove('show');
+$('editOverlay').addEventListener('click', e => { if (e.target === $('editOverlay')) $('editOverlay').classList.remove('show'); });
+
+$('editSaveBtn').onclick = async () => {
+  const a = editingTarget;
+  const msg = $('editMsg');
+  const newName = $('editName').value.trim();
+  const file = $('editFile').files[0];
+  if (!a) return;
+  if (!newName) { msg.textContent = '画师名不能为空'; msg.className = 'msg err'; return; }
+
+  // 重名检测（排除自己）
+  const dup = artists.find(x => x.name.toLowerCase() === newName.toLowerCase() && x !== a);
+  if (dup) { msg.textContent = '⚠️ 该画师名已存在'; msg.className = 'msg err'; return; }
+
+  msg.textContent = '保存中...'; msg.className = 'msg';
+  try {
+    let imageUrl = a.image_url;
+    // 1. 若选了新图，先上传
+    if (file) {
+      const safeName = 'upload_' + Date.now() + '_' + Math.random().toString(36).slice(2,8) + '.jpg';
+      imageUrl = await uploadImageXHR(file, safeName);
+      if (!imageUrl) throw new Error('图片上传失败');
+      // 删旧图（不阻断）
+      try {
+        const fn = a.image_url.split('/').pop();
+        if (fn) await sbDelete('/storage/v1/object/' + BUCKET + '/' + encodeURIComponent(fn), false);
+      } catch(e){}
+    }
+    // 2. 更新记录
+    await fetch(SUPABASE_URL + '/rest/v1/artists?id=eq.' + a.id, {
+      method: 'PATCH',
+      headers: { apikey: ANON_KEY, Authorization: 'Bearer ' + ANON_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ name: newName, image_url: imageUrl })
+    });
+    msg.textContent = '✅ 已保存：' + newName; msg.className = 'msg ok';
+    $('editOverlay').classList.remove('show');
+    await loadArtists();
+    render();
+  } catch(e) {
+    msg.textContent = '保存失败：' + e.message; msg.className = 'msg err';
+  }
+};
+
+// ---- 删除画师（管理员卡片按钮版）----
+async function deleteArtist(id) {
+  const a = findById(id);
+  if (!a) return;
+  if (!confirm('确定要删除画师「' + a.name + '」吗？此操作不可恢复！')) return;
+  const msg = $('adminMsg');
+  try {
+    try {
+      const fn = a.image_url.split('/').pop();
+      if (fn) await sbDelete('/storage/v1/object/' + BUCKET + '/' + encodeURIComponent(fn), false);
+    } catch(e) {}
+    await sbDelete('/rest/v1/artists?id=eq.' + a.id, false);
+    showBanner('✅ 已删除：' + a.name);
+    await loadArtists();
+    render();
+  } catch(e) {
+    showBanner('删除失败：' + e.message);
+  }
 }
 
 // ---- 随机 Tab ----
@@ -462,6 +707,8 @@ $('verifyBtn').onclick = () => {
     $('uploadArea').style.display = 'block';
     $('adminMsg').textContent = '已进入管理员模式';
     $('adminMsg').className = 'msg ok';
+    renderTopLeft();
+    render(); // 卡片显示删除/修改按钮
   } else {
     $('adminMsg').textContent = '密钥错误';
     $('adminMsg').className = 'msg err';
@@ -470,6 +717,8 @@ $('verifyBtn').onclick = () => {
 $('logoutBtn').onclick = () => {
   isAdmin = false;
   $('adminOverlay').classList.remove('show');
+  renderTopLeft();
+  render();
 };
 
 // ---- 上传画师 ----
@@ -497,6 +746,7 @@ $('uploadBtn').onclick = async () => {
     msg.textContent = '✅ 上传成功：' + name; msg.className = 'msg ok';
     $('upName').value = ''; $('upFile').value = '';
     await loadArtists();
+    render();
   } catch(e) {
     msg.textContent = '上传失败：' + e.message; msg.className = 'msg err';
   }
@@ -527,36 +777,12 @@ function uploadImageXHR(file, safeName) {
   });
 }
 
-// ---- 删除画师 ----
-$('delBtn').onclick = async () => {
-  const name = $('delName').value.trim();
-  const msg = $('adminMsg');
-  if (!name) { msg.textContent = '请输入要删除的画师名'; msg.className = 'msg err'; return; }
-  const target = artists.find(a => a.name.toLowerCase() === name.toLowerCase());
-  if (!target) { msg.textContent = '未找到画师：' + name; msg.className = 'msg err'; return; }
-  if (!confirm('确定要删除画师「' + target.name + '」吗？此操作不可恢复！')) return;
-  msg.textContent = '删除中...'; msg.className = 'msg';
-  try {
-    // 1. 删除图片对象（从image_url提取文件名）
-    try {
-      const fn = target.image_url.split('/').pop();
-      if (fn) await sbDelete('/storage/v1/object/' + BUCKET + '/' + encodeURIComponent(fn), false);
-    } catch(e) { /* 图片删除失败不阻断 */ }
-    // 2. 删除数据库记录
-    await sbDelete('/rest/v1/artists?name=eq.' + encodeURIComponent(target.name), false);
-    msg.textContent = '✅ 已删除：' + target.name; msg.className = 'msg ok';
-    $('delName').value = '';
-    await loadArtists();
-  } catch(e) {
-    msg.textContent = '删除失败：' + e.message; msg.className = 'msg err';
-  }
-};
-
 // ---- 初始化 ----
 document.querySelectorAll('.nav-item').forEach(n => {
   n.onclick = () => { tab = n.dataset.tab; render(); };
 });
 applyTheme();
+renderTopLeft();
 loadArtists();
 render();
 </script>
