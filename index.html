@@ -583,7 +583,7 @@ function searchHTML() {
       <input type="text" id="upName" placeholder="画师名" autocomplete="off">
       <label class="file-label" for="upFile">📷 选择效果图</label>
       <input type="file" id="upFile" accept="image/*" style="display:none">
-      <button class="btn" id="uploadBtn" style="width:100%;margin-top:4px;">上传画师</button>
+      <button class="btn" id="uploadBtn" style="width:100%;margin-top:4px;" onclick="uploadNewArtist()">上传画师</button>
       <div class="msg" id="uploadMsg"></div>
     </div>` : ''}
   `;
@@ -910,9 +910,11 @@ $('verifyBtn').onclick = () => {
 
 // ---- 上传画师（主界面管理员模式下显示）----
 async function uploadNewArtist() {
-  const name = $('upName').value.trim();
-  const file = $('upFile').files[0];
-  const msg = $('uploadMsg');
+  const nameInput = $('upName'), fileInput = $('upFile'), msgEl = $('uploadMsg');
+  if (!nameInput || !fileInput || !msgEl) { console.error('上传控件缺失'); return; }
+  const name = nameInput.value.trim();
+  const file = fileInput.files[0];
+  const msg = msgEl;
   if (!name) { msg.textContent = '请填写画师名'; msg.className = 'msg err'; return; }
   if (!file) { msg.textContent = '请选择效果图'; msg.className = 'msg err'; return; }
 
@@ -931,7 +933,7 @@ async function uploadNewArtist() {
     // 2. 写库（用 anon key）——画师名支持中文，存在name字段
     await sbPost('/rest/v1/artists', { name, image_url: imageUrl }, false);
     msg.textContent = '✅ 上传成功：' + name; msg.className = 'msg ok';
-    $('upName').value = ''; $('upFile').value = '';
+    nameInput.value = ''; fileInput.value = '';
     await loadArtists();
     render();
     bindUpload();
