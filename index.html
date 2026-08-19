@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>画师库</title>
+<style>
+  :root {
+    --bg: #f5f7ff;
+    --card: #ffffff;
+    --primary: #3b82f6;
+    --text: #1f2937;
+    --sub: #6b7280;
+    --line: #e5e7eb;
+    --shadow: 0 2px 12px rgba(59,130,246,.08);
+    --topbar: #ffffff;
+    --nav-bg: #ffffff;
+  }
+  body.dark {
+    --bg: #0f1420;
+    --card: #1a2233;
+    --primary: #60a5fa;
+    --text: #e2e8f0;
+    --sub: #7c8ba1;
+    --line: #263248;
+    --shadow: 0 2px 12px rgba(0,0,0,.4);
+    --topbar: #141b2b;
+    --nav-bg: #141b2b;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; }
+  body {
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    transition: background .3s, color .3s;
+    display: flex; flex-direction: column;
+    min-height: 100vh;
+  }
+
+  /* 顶部栏 */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--topbar);
+    border-bottom: 1px solid var(--line);
+    position: sticky; top:0; z-index:50;
+  }
+  .topbar .logo {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    font-size: 26px; cursor: pointer; user-select:none;
+    padding: 4px 10px; border-radius: 10px;
+    transition: background .2s;
+  }
+  .topbar .logo:active { background: var(--line); }
+  .theme-btn {
+    font-size: 22px; cursor: pointer; border:none; background:none;
+    padding: 6px; border-radius: 50%;
+  }
+  .theme-btn:hover { background: var(--line); }
+
+  /* 主内容区 */
+  .content { flex:1; padding: 16px; overflow-y:auto; }
+
+  /* 更新横幅 */
+  .banner {
+    display:none; position: sticky; top:55px; z-index:40;
+    background: var(--primary); color:#fff;
+    padding: 10px 14px; font-size:14px; border-radius: 10px;
+    margin-bottom: 12px; box-shadow: var(--shadow);
+    animation: fadeIn .4s;
+  }
+  @keyframes fadeIn { from{opacity:0; transform:translateY(-8px)} to{opacity:1; transform:none} }
+
+  /* 检索 */
+  .search-row { display:flex; gap:8px; margin-bottom:12px; }
+  .search-row input {
+    flex:1; padding: 12px 14px; border-radius: 12px;
+    border:1px solid var(--line); background: var(--card); color: var(--text);
+    font-size:15px; outline:none;
+  }
+  .search-row input:focus { border-color: var(--primary); }
+  .search-row button {
+    padding: 0 20px; border:none; border-radius: 12px;
+    background: var(--primary); color:#fff; font-size:15px; cursor:pointer;
+  }
+  .suggest {
+    display:none; background: var(--card); border:1px solid var(--line);
+    border-radius: 12px; overflow:hidden; margin-bottom:12px; box-shadow: var(--shadow);
+  }
+  .suggest-item {
+    padding: 12px 14px; cursor:pointer; font-size:15px; border-bottom:1px solid var(--line);
+  }
+  .suggest-item:last-child { border-bottom:none; }
+  .suggest-item:active { background: var(--line); }
+
+  .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); gap:12px; }
+  .card {
+    background: var(--card); border-radius: 12px; overflow:hidden;
+    box-shadow: var(--shadow); border:1px solid var(--line);
+  }
+  .card img { width:100%; aspect-ratio:1/1; object-fit:cover; display:block; }
+  .card .name { padding:8px 10px; font-size:14px; text-align:center; color:var(--text); }
+
+  .empty { text-align:center; color:var(--sub); padding:40px 0; font-size:14px; }
+
+  /* 随机 */
+  .tab-box { display:flex; flex-direction:column; align-items:center; padding-top:20px; }
+  .tab-box h3 { font-size:18px; margin-bottom:16px; font-weight:600; }
+  .rand-row { display:flex; align-items:center; gap:10px; margin-bottom:20px; }
+  .rand-row input {
+    width:80px; padding:10px; text-align:center; font-size:16px;
+    border:1px solid var(--line); border-radius:12px; background:var(--card); color:var(--text);
+  }
+  .rand-row button {
+    width:52px; height:44px; font-size:20px; border:none; border-radius:12px;
+    background: var(--primary); color:#fff; cursor:pointer;
+  }
+  .rand-result {
+    background: var(--card); border:1px solid var(--line); border-radius:12px;
+    padding:20px; width:100%; min-height:80px; text-align:center;
+    font-size:16px; line-height:1.8; word-break:break-all; box-shadow: var(--shadow);
+  }
+  .copy-btn {
+    margin-top:14px; padding:10px 28px; border:none; border-radius:12px;
+    background: var(--primary); color:#fff; font-size:15px; cursor:pointer;
+  }
+
+  /* 统计 */
+  .stat-box { text-align:center; padding-top:30px; }
+  .stat-num { font-size:64px; font-weight:800; color: var(--primary); }
+  .stat-label { color: var(--sub); margin:8px 0 30px; }
+  .stat-section { text-align:left; background: var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:12px; box-shadow: var(--shadow); }
+  .stat-section h4 { font-size:15px; margin-bottom:10px; color: var(--sub); }
+  .stat-tags { display:flex; flex-wrap:wrap; gap:8px; }
+  .stat-tag { background: var(--line); color: var(--text); font-size:13px; padding:5px 10px; border-radius:8px; }
+
+  /* 上传表单 / 管理员 */
+  .admin-overlay {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.55);
+    z-index:100; align-items:center; justify-content:center; padding:20px;
+  }
+  .admin-overlay.show { display:flex; }
+  .admin-panel {
+    background: var(--card); border-radius:16px; padding:24px; width:100%; max-width:360px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.3);
+  }
+  .admin-panel h3 { margin-bottom:16px; font-size:17px; text-align:center; }
+  .admin-panel input {
+    width:100%; padding:11px 12px; margin-bottom:12px;
+    border:1px solid var(--line); border-radius:10px; background:var(--bg); color:var(--text);
+    font-size:15px; outline:none;
+  }
+  .admin-panel input:focus { border-color: var(--primary); }
+  .admin-panel .file-label {
+    display:block; padding:11px 12px; margin-bottom:12px; text-align:center;
+    border:1px dashed var(--primary); border-radius:10px; color:var(--primary);
+    cursor:pointer; font-size:14px;
+  }
+  .admin-panel .btn {
+    width:100%; padding:12px; border:none; border-radius:10px;
+    background: var(--primary); color:#fff; font-size:15px; cursor:pointer; margin-top:4px;
+  }
+  .admin-panel .btn.secondary { background: var(--line); color: var(--text); margin-top:8px; }
+  .admin-panel .msg { font-size:13px; text-align:center; margin-top:10px; min-height:18px; color: var(--sub); }
+  .admin-panel .msg.err { color:#ef4444; }
+  .admin-panel .msg.ok { color:#22c55e; }
+  .admin-panel .author-note { text-align:center; color: var(--sub); font-size:13px; margin-bottom:10px; }
+
+  /* 底部导航 */
+  .bottom-nav {
+    display:flex; background: var(--nav-bg);
+    border-top:1px solid var(--line); padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+    position: sticky; bottom:0; z-index:50;
+  }
+  .nav-item {
+    flex:1; display:flex; flex-direction:column; align-items:center;
+    padding:6px 0; cursor:pointer; color:var(--sub); font-size:12px;
+    transition:color .2s; user-select:none;
+  }
+  .nav-item .ico { font-size:22px; margin-bottom:2px; }
+  .nav-item.active { color: var(--primary); }
+  .nav-sign { text-align:center; color: var(--sub); font-size:12px; padding:4px 0 8px; background: var(--nav-bg); border-top:1px solid var(--line); }
+</style>
+</head>
+<body>
+
+<!-- 顶部栏 -->
+<div class="topbar">
+  <span></span>
+  <span class="logo" id="logo">🕊</span>
+  <button class="theme-btn" id="themeBtn" title="切换日夜">🌙</button>
+</div>
+
+<!-- 更新横幅 -->
+<div class="banner" id="banner"></div>
+
+<!-- 内容区 -->
+<div class="content" id="content"></div>
+
+<!-- 底部导航 -->
+<div class="bottom-nav">
+  <div class="nav-item active" data-tab="search"><span class="ico">🔍</span>检索</div>
+  <div class="nav-item" data-tab="random"><span class="ico">🎲</span>随机</div>
+  <div class="nav-item" data-tab="stat"><span class="ico">📊</span>统计</div>
+</div>
+<div class="nav-sign" id="navSign"></div>
+
+<!-- 管理员弹窗 -->
+<div class="admin-overlay" id="adminOverlay">
+  <div class="admin-panel" id="adminPanel">
+    <h3>管理员模式</h3>
+    <div id="loginArea">
+      <input type="password" id="adminKey" placeholder="输入密钥" autocomplete="off">
+      <button class="btn" id="verifyBtn">验证</button>
+    </div>
+    <div id="uploadArea" style="display:none">
+      <div class="author-note">署名：蓝丞</div>
+      <input type="text" id="upName" placeholder="画师名">
+      <label class="file-label" for="upFile">📷 选择效果图</label>
+      <input type="file" id="upFile" accept="image/*" style="display:none">
+      <button class="btn" id="uploadBtn">上传画师</button>
+      <button class="btn secondary" id="logoutBtn">退出管理</button>
+    </div>
+    <div class="msg" id="adminMsg"></div>
+  </div>
+</div>
+
+<script>
+// ============ 配置 ============
+const SUPABASE_URL = 'https://tfeehgkhtaxznfbecwvh.supabase.co';
+const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmZWVoZ2todGF4em5mYmVjd3ZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcxNDkyNzMsImV4cCI6MjEwMjcyNTI3M30.gAh1UT6sh3o_eB719aO1kzxdkRR0enoaRMmhz7ZZwTE';
+const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRmZWVoZ2todGF4em5mYmVjd3ZoIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NzE0OTI3MywiZXhwIjoyMTAyNzI1MjczfQ.4g8OWHlrMhQkI77u28g6u1BFbm9qW0BO4dj99IGQEQs';
+const BUCKET = 'artist-images';
+const ADMIN_KEY = '1025'; // 管理员密钥（测试用）
+const AUTHOR = '蓝丞';
+// ============================
+
+let artists = [];
+let tab = 'search';
+let isAdmin = false;
+
+const $ = id => document.getElementById(id);
+
+// ---- Supabase 客户端（用 fetch 直接调 REST）----
+async function sbGet(path) {
+  const r = await fetch(SUPABASE_URL + path, { headers: { apikey: ANON_KEY, Authorization: 'Bearer ' + ANON_KEY } });
+  if (!r.ok) throw new Error('读取失败 ' + r.status);
+  return r.json();
+}
+async function sbPost(path, body, useService) {
+  const key = useService ? SERVICE_KEY : ANON_KEY;
+  const r = await fetch(SUPABASE_URL + path, {
+    method: 'POST',
+    headers: { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+    body: JSON.stringify(body)
+  });
+  if (!r.ok) throw new Error('写入失败 ' + r.status);
+  return r;
+}
+
+// ---- 加载数据 ----
+async function loadArtists() {
+  try {
+    const data = await sbGet('/rest/v1/artists?select=name,image_url,created_at&order=created_at.asc');
+    artists = data;
+    renderNavSign();
+    checkNew();
+  } catch(e) { console.error(e); }
+}
+
+// ---- 底部署名 ----
+function renderNavSign() {
+  $('navSign').textContent = AUTHOR + ' · 共 ' + artists.length + ' 位画师';
+}
+
+// ---- 更新提示 ----
+function checkNew() {
+  const last = localStorage.getItem('lastCount');
+  const cur = artists.length;
+  if (last !== null) {
+    const added = cur - parseInt(last);
+    if (added > 0) {
+      const newest = artists.slice(-Math.min(3, added)).map(a => a.name).join('、');
+      const b = $('banner');
+      b.textContent = '📢 新增 ' + added + ' 位画师：' + newest;
+      b.style.display = 'block';
+      setTimeout(() => b.style.display = 'none', 5000);
+    }
+  }
+  localStorage.setItem('lastCount', cur);
+}
+
+// ---- Tab 切换 ----
+function render() {
+  const c = $('content');
+  if (tab === 'search') c.innerHTML = searchHTML();
+  else if (tab === 'random') c.innerHTML = randomHTML();
+  else if (tab === 'stat') c.innerHTML = statHTML();
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector(`.nav-item[data-tab="${tab}"]`).classList.add('active');
+  if (tab === 'search') initSearch();
+  if (tab === 'random') initRandom();
+}
+
+// ---- 检索 Tab ----
+function searchHTML() {
+  return `
+    <div class="search-row">
+      <input id="searchInput" placeholder="输入画师名检索..." autocomplete="off">
+      <button id="searchBtn">搜索</button>
+    </div>
+    <div class="suggest" id="suggest"></div>
+    <div class="grid" id="grid"><div class="empty">输入关键词或点击搜索</div></div>
+  `;
+}
+function initSearch() {
+  const input = $('searchInput');
+  const suggest = $('suggest');
+  const grid = $('grid');
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    const matches = q ? artists.filter(a => a.name.toLowerCase().includes(q)) : [];
+    suggest.innerHTML = '';
+    if (q && matches.length) {
+      suggest.style.display = 'block';
+      matches.slice(0, 10).forEach(a => {
+        const d = document.createElement('div');
+        d.className = 'suggest-item';
+        d.textContent = a.name;
+        d.onclick = () => { input.value = a.name; suggest.style.display = 'none'; showGrid([a]); };
+        suggest.appendChild(d);
+      });
+    } else {
+      suggest.style.display = 'none';
+    }
+  });
+  input.addEventListener('blur', () => setTimeout(() => suggest.style.display = 'none', 200));
+  $('searchBtn').onclick = () => {
+    const q = input.value.trim().toLowerCase();
+    const matches = q ? artists.filter(a => a.name.toLowerCase().includes(q)) : artists;
+    showGrid(matches);
+  };
+}
+function showGrid(list) {
+  const grid = $('grid');
+  if (!list.length) { grid.innerHTML = '<div class="empty">未找到匹配画师</div>'; return; }
+  grid.innerHTML = list.map(a => `
+    <div class="card">
+      <img src="${a.image_url}" alt="${a.name}" loading="lazy" referrerpolicy="no-referrer">
+      <div class="name">${a.name}</div>
+    </div>
+  `).join('');
+}
+
+// ---- 随机 Tab ----
+function randomHTML() {
+  return `
+    <div class="tab-box">
+      <h3>🎲 随机画师串</h3>
+      <div class="rand-row">
+        <input type="number" id="randNum" min="1" value="3" placeholder="数量">
+        <button id="randBtn">🎲</button>
+      </div>
+      <div class="rand-result" id="randResult">点击骰子随机抽取</div>
+      <button class="copy-btn" id="copyBtn" style="display:none">复制</button>
+    </div>
+  `;
+}
+function initRandom() {
+  $('randBtn').onclick = () => {
+    const n = parseInt($('randNum').value);
+    const result = $('randResult');
+    const copy = $('copyBtn');
+    if (!n || n < 1) { result.textContent = '请输入至少 1 个'; copy.style.display = 'none'; return; }
+    const shuffled = [...artists].sort(() => Math.random() - 0.5);
+    const picked = shuffled.slice(0, Math.min(n, shuffled.length));
+    result.textContent = picked.map(a => '@' + a.name).join('，');
+    result.dataset.text = result.textContent;
+    copy.style.display = 'block';
+  };
+  $('copyBtn').onclick = () => {
+    const text = $('randResult').dataset.text;
+    if (!text) return;
+    if (navigator.clipboard) navigator.clipboard.writeText(text);
+    else { const t = document.createElement('textarea'); t.value = text; document.body.appendChild(t); t.select(); document.execCommand('copy'); t.remove(); }
+    $('copyBtn').textContent = '已复制 ✓';
+    setTimeout(() => $('copyBtn').textContent = '复制', 1500);
+  };
+}
+
+// ---- 统计 Tab ----
+function statHTML() {
+  const last = localStorage.getItem('lastCount');
+  const added = last !== null ? artists.length - parseInt(last) : 0;
+  const newest = artists.slice(-10).reverse();
+  return `
+    <div class="stat-box">
+      <div class="stat-num">${artists.length}</div>
+      <div class="stat-label">目前画师总数</div>
+      <div class="stat-section">
+        <h4>📢 本次打开新增</h4>
+        ${added > 0 ? `<div class="stat-tags">${newest.slice(0, added).map(a => '<span class="stat-tag">' + a.name + '</span>').join('')}</div>` : '<div style="color:var(--sub)">暂无新增</div>'}
+      </div>
+      <div class="stat-section">
+        <h4>🆕 最近新增</h4>
+        <div class="stat-tags">${newest.map(a => '<span class="stat-tag">' + a.name + '</span>').join('')}</div>
+      </div>
+    </div>
+  `;
+}
+
+// ---- 日夜切换 ----
+function applyTheme() {
+  const dark = localStorage.getItem('theme') === 'dark';
+  document.body.classList.toggle('dark', dark);
+  $('themeBtn').textContent = dark ? '☀️' : '🌙';
+}
+$('themeBtn').onclick = () => {
+  const dark = !document.body.classList.contains('dark');
+  localStorage.setItem('theme', dark ? 'dark' : 'light');
+  applyTheme();
+};
+
+// ---- 隐藏入口：长按 5 秒 ----
+let logoTimer = null;
+$('logo').addEventListener('touchstart', startLongPress);
+$('logo').addEventListener('mousedown', startLongPress);
+function startLongPress(e) { e.preventDefault(); logoTimer = setTimeout(openAdmin, 5000); }
+$('logo').addEventListener('touchend', clearLongPress);
+$('logo').addEventListener('touchmove', clearLongPress);
+$('logo').addEventListener('mouseup', clearLongPress);
+$('logo').addEventListener('mouseleave', clearLongPress);
+function clearLongPress() { if (logoTimer) { clearTimeout(logoTimer); logoTimer = null; } }
+
+function openAdmin() {
+  $('adminMsg').textContent = '';
+  $('adminOverlay').classList.add('show');
+  $('loginArea').style.display = 'block';
+  $('uploadArea').style.display = 'none';
+  $('adminKey').value = '';
+  if (!isAdmin) setTimeout(() => $('adminKey').focus(), 100);
+}
+$('adminOverlay').addEventListener('click', e => { if (e.target === $('adminOverlay')) $('adminOverlay').classList.remove('show'); });
+
+$('verifyBtn').onclick = () => {
+  if ($('adminKey').value === ADMIN_KEY) {
+    isAdmin = true;
+    $('loginArea').style.display = 'none';
+    $('uploadArea').style.display = 'block';
+    $('adminMsg').textContent = '已进入管理员模式';
+    $('adminMsg').className = 'msg ok';
+  } else {
+    $('adminMsg').textContent = '密钥错误';
+    $('adminMsg').className = 'msg err';
+  }
+};
+$('logoutBtn').onclick = () => {
+  isAdmin = false;
+  $('adminOverlay').classList.remove('show');
+};
+
+// ---- 上传画师 ----
+$('uploadBtn').onclick = async () => {
+  const name = $('upName').value.trim();
+  const file = $('upFile').files[0];
+  const msg = $('adminMsg');
+  if (!name) { msg.textContent = '请填写画师名'; msg.className = 'msg err'; return; }
+  if (!file) { msg.textContent = '请选择效果图'; msg.className = 'msg err'; return; }
+
+  // 重名检测
+  const dup = artists.find(a => a.name.toLowerCase() === name.toLowerCase());
+  if (dup) { msg.textContent = '⚠️ 该画师已存在：' + dup.name; msg.className = 'msg err'; return; }
+
+  msg.textContent = '上传中...'; msg.className = 'msg';
+  try {
+    // 1. 先用画师名做重名检测（更友好）
+    const upName = encodeURIComponent(name + '.jpg');
+    // 1a. 上传图片（用 service key）—— 若已存在则覆盖(upsert)
+    const up = await fetch(SUPABASE_URL + '/storage/v1/object/' + BUCKET + '/' + upName + '?upsert=true', {
+      method: 'POST',
+      headers: { apikey: SERVICE_KEY, Authorization: 'Bearer ' + SERVICE_KEY, 'Content-Type': file.type },
+      body: file
+    });
+    if (!up.ok) {
+      let errText = '';
+      try { errText = await up.text(); } catch(e){}
+      throw new Error('图片上传失败(' + up.status + ') ' + errText);
+    }
+    const imageUrl = SUPABASE_URL + '/storage/v1/object/public/' + BUCKET + '/' + upName;
+
+    // 2. 写库
+    await sbPost('/rest/v1/artists', { name, image_url: imageUrl }, true);
+    msg.textContent = '✅ 上传成功：' + name; msg.className = 'msg ok';
+    $('upName').value = ''; $('upFile').value = '';
+    await loadArtists();
+  } catch(e) {
+    msg.textContent = '上传失败：' + e.message; msg.className = 'msg err';
+  }
+};
+
+// ---- 初始化 ----
+document.querySelectorAll('.nav-item').forEach(n => {
+  n.onclick = () => { tab = n.dataset.tab; render(); };
+});
+applyTheme();
+loadArtists();
+render();
+</script>
+</body>
+</html>
